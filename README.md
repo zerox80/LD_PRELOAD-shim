@@ -1,11 +1,3 @@
-# libinput_scroll_shim
-
-LD_PRELOAD shim that scales libinput scroll deltas globally inside GNOME/Mutter (Wayland). Works for mice and touchpads because scaling happens after libinput normalization.
-
-- Scales vertical/horizontal scroll values from `libinput_event_pointer_get_axis_value()` and `libinput_event_pointer_get_scroll_value()` (and their `_v120` variants)
-- Optional per-source multipliers (wheel vs. finger vs. continuous)
-- Controlled via environment variables; safe fallback (scale=1.0 if unset)
-
 ## Quick start (GNOME Shell–only, Wayland)
 
 This setup injects the shim only into GNOME Shell, which then propagates to apps it launches. It avoids setting global environment for all user processes.
@@ -44,3 +36,4 @@ sudo install -Dm755 target/release/liblibinput_scroll_shim.so /usr/local/lib/lib
 # Then in your drop-in, set:
 # Environment=LD_PRELOAD=/usr/local/lib/liblibinput_scroll_shim.so
 # and relogin
+```
