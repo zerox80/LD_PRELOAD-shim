@@ -42,7 +42,9 @@ sudo install -Dm755 target/release/liblibinput_scroll_shim.so /usr/local/lib/lib
 
 This approach injects the shim into the COSMIC Wayland compositor (`cosmic-comp`) so that scroll deltas are scaled for the whole session.
 
-### Method A — Display manager (override the session entry)
+### Method A — Display manager (override the system session entry)
+
+> **Heads-up (GDM users):** GDM ignores per-user copies in `~/.local/share/wayland-sessions/`. Edit the system file directly instead, ideally keeping a backup. Other display managers (e.g. SDDM, cosmic-greeter) may honor the user-local override.
 
 ```bash
 # 1) Build
@@ -51,21 +53,22 @@ cargo build --release
 # 2) Install the .so to a stable path (user-local)
 install -Dm755 target/release/liblibinput_scroll_shim.so ~/.local/lib/liblibinput_scroll_shim.so
 
-# 3) Copy the COSMIC session file to your user directory
+# 3) (Optional, non-GDM) copy the session file to your user directory
 mkdir -p ~/.local/share/wayland-sessions
 cp /usr/share/wayland-sessions/cosmic.desktop ~/.local/share/wayland-sessions/cosmic.desktop
 
-# 4) Edit Exec= in the copied file to prefix with env variables (absolute paths only)
+# 4) Edit the Exec= line (system-wide or user copy) to prefix the env variables
 # Example Exec= line:
 # Exec=env LD_PRELOAD=/home/<your-username>/.local/lib/liblibinput_scroll_shim.so \
-#     SCROLL_SCALE_Y=0.5 start-cosmic
+#     SCROLL_SCALE_Y=0.5 SCROLL_DEBUG=1 /usr/bin/start-cosmic
 
-# 5) Log out, then in your display manager choose the "COSMIC" session and log back in
+# 5) If using GDM, edit /usr/share/wayland-sessions/cosmic.desktop with sudo (backup first),
+#    then log out, choose the COSMIC session in the greeter, and log back in
 ```
 
 Notes:
 - Neither session files nor the compositor will expand `$HOME`/`$USER`. Use absolute paths.
-- If your distribution's `cosmic.desktop` uses a different Exec command than `start-cosmic`, keep everything after `env ...` unchanged and only prefix with the variables.
+- Keep everything after `env ...` identical to the original `Exec=` command shipped by your distro.
 
 ### Method B — Start from a TTY
 
