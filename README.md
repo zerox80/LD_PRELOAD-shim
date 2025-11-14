@@ -1,4 +1,4 @@
-l## Quick start (GNOME Shell–only, Wayland)
+## Quick start (GNOME Shell–only, Wayland)
 
 This setup injects the shim only into GNOME Shell, which then propagates to apps it launches. It avoids setting global environment for all user processes.
 
