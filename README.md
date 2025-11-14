@@ -94,3 +94,70 @@ journalctl --user -b | grep libinput_scroll_shim | tail -n 50
 ```
 
 Optional hardening (system-wide .so location) is possible as described above; then use `/usr/local/lib/liblibinput_scroll_shim.so` in place of the home path.
+
+## Quick start (Cinnamon Desktop, Wayland - Linux Mint)
+
+This setup injects the shim into the Cinnamon Wayland compositor so that scroll deltas are scaled for the whole session. Cinnamon Wayland support is experimental (introduced in Cinnamon 6.0, Linux Mint 21.3+) and not yet production-ready.
+
+> **Linux Mint-spezifisch:** LightDM (der Standard-Display-Manager in Linux Mint) ignoriert user-lokale Kopien in `~/.local/share/wayland-sessions/`. Du musst die System-Session-Datei direkt bearbeiten. Erstelle vorher immer ein Backup.
+
+```bash
+# 1) Build
+cargo build --release
+
+# 2) Install die .so zu einem stabilen Pfad (user-local)
+install -Dm755 target/release/liblibinput_scroll_shim.so ~/.local/lib/liblibinput_scroll_shim.so
+
+# 3) Backup der System-Session-Datei erstellen
+sudo cp /usr/share/wayland-sessions/cinnamon-wayland.desktop \
+        /usr/share/wayland-sessions/cinnamon-wayland.desktop.backup
+
+# 4) Session-Datei mit sudo bearbeiten (z.B. mit xed, dem Linux Mint Editor)
+sudo xed /usr/share/wayland-sessions/cinnamon-wayland.desktop
+
+# 5) Modifiziere die Exec= Zeile, um die Umgebungsvariablen voranzustellen:
+#
+# Beispiel Exec= Zeile (ABSOLUTE Pfade verwenden, kein $HOME oder $USER):
+# Exec=env LD_PRELOAD=/home/<dein-username>/.local/lib/liblibinput_scroll_shim.so \
+#     SCROLL_SCALE_Y=0.5 SCROLL_DEBUG=1 cinnamon-session --session=cinnamon-wayland
+#
+# WICHTIG: Alles nach "env ..." muss identisch zum ursprünglichen Exec= Befehl bleiben
+
+# 6) Logout, wähle "Cinnamon on Wayland" im LightDM-Greeter und logge dich wieder ein
+```
+
+### Verifizierung nach Login (Cinnamon Wayland)
+
+```bash
+# Finde den Cinnamon-Prozess
+pid=$(pgrep -u "$USER" -x cinnamon | head -n1)
+echo "cinnamon PID=$pid"
+
+# Prüfe Umgebungsvariablen
+tr '\0' '\n' </proc/$pid/environ | egrep '^(LD_PRELOAD|SCROLL_)'
+
+# Prüfe ob der Shim gemappt wurde
+grep -F liblibinput_scroll_shim.so /proc/$pid/maps && echo "shim mapped"
+```
+
+Falls `SCROLL_DEBUG=1` gesetzt ist, kannst du auch die Logs überprüfen:
+
+```bash
+journalctl --user -b | grep libinput_scroll_shim | tail -n 50
+```
+
+Optional hardening (system-weite .so Location):
+
+```bash
+sudo install -Dm755 target/release/liblibinput_scroll_shim.so /usr/local/lib/liblibinput_scroll_shim.so
+# Dann in der Session-Datei setzen:
+# Environment=LD_PRELOAD=/usr/local/lib/liblibinput_scroll_shim.so
+# und neu einloggen
+```
+
+### Hinweise zu Linux Mint
+
+- Der Standard-Texteditor in Linux Mint ist `xed` (ersetzt gedit)
+- Alternativ kannst du auch `nano` oder `sudoedit` verwenden: `sudoedit /usr/share/wayland-sessions/cinnamon-wayland.desktop`
+- Session-Dateien expandieren KEINE Shell-Variablen wie `$HOME` oder `$USER` - verwende immer absolute Pfade
+- LightDM Version 1.30.0+ mit Slick-Greeter ist der Standard in aktuellen Linux Mint Versionen
